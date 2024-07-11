@@ -1,9 +1,21 @@
 import numpy_financial as npf
 
 def calculate_amortization_schedule(amount, annual_interest_rate, loan_term):
+    """
+    Calculate the amortization schedule for a loan.
+
+    Parameters:
+    - amount: The loan amount.
+    - annual_interest_rate: The annual interest rate of the loan.
+    - loan_term: The term of the loan in months.
+
+    Returns:
+    A list of dictionaries containing the amortization schedule for each month.
+    """
     monthly_interest_rate = annual_interest_rate / 12 / 100
     number_of_payments = loan_term
 
+    # Calculate the monthly payment using the numpy_financial.pmt function
     monthly_payment = npf.pmt(monthly_interest_rate, number_of_payments, -amount)
     schedule = []
 

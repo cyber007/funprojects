@@ -5,42 +5,89 @@ import models, schemas, crud
 from database import engine, SessionLocal, get_db
 import utils
 
+# Create the database tables based on the models
 models.Base.metadata.create_all(bind=engine)
 
+# Initialize the FastAPI app
 app = FastAPI()
-
 
 @app.post("/users/", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    """
+    Create a new user with the given details.
+
+    Args:
+    - user: UserCreate schema with user details.
+    - db: Database session.
+
+    Returns:
+    - The created user.
+    """
     db_user = crud.get_user_by_email(db, email=user.email)
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     return crud.create_user(db=db, user=user)
 
-
 @app.post("/loans/", response_model=schemas.Loan)
 def create_loan(loan: schemas.LoanCreate, db: Session = Depends(get_db)):
-    return crud.create_user_loan(db=db, loan=loan)
+    """
+    Create a new loan with the given details.
 
+    Args:
+    - loan: LoanCreate schema with loan details.
+    - db: Database session.
+
+    Returns:
+    - The created loan.
+    """
+    return crud.create_user_loan(db=db, loan=loan)
 
 @app.get("/loans/{loan_id}", response_model=schemas.Loan)
 def read_loan(loan_id: int, db: Session = Depends(get_db)):
+    """
+    Fetch a loan by its ID.
+
+    Args:
+    - loan_id: The ID of the loan.
+    - db: Database session.
+
+    Returns:
+    - The loan with the specified ID.
+    """
     db_loan = crud.get_loan(db, loan_id=loan_id)
     if db_loan is None:
         raise HTTPException(status_code=404, detail="Loan not found")
     return db_loan
 
-
 @app.get("/users/{user_id}/loans", response_model=List[schemas.Loan])
 def read_loans_by_user(user_id: int, db: Session = Depends(get_db)):
+    """
+    Fetch all loans for a specific user.
+
+    Args:
+    - user_id: The ID of the user.
+    - db: Database session.
+
+    Returns:
+    - A list of loans for the specified user.
+    """
     db_user = crud.get_user(db, user_id=user_id)
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return crud.get_loans_by_user(db, user_id=user_id)
 
-
 @app.get("/loans/{loan_id}/schedule")
 def get_loan_schedule(loan_id: int, db: Session = Depends(get_db)):
+    """
+    Fetch the amortization schedule for a specific loan.
+
+    Args:
+    - loan_id: The ID of the loan.
+    - db: Database session.
+
+    Returns:
+    - The amortization schedule for the specified loan.
+    """
     db_loan = crud.get_loan(db, loan_id=loan_id)
     if db_loan is None:
         raise HTTPException(status_code=404, detail="Loan not found")
@@ -51,6 +98,16 @@ def get_loan_schedule(loan_id: int, db: Session = Depends(get_db)):
 
 @app.get("/users/{user_id}/monthly_payments")
 def calculate_monthly_payments(user_id: int, db: Session = Depends(get_db)):
+    """
+    Fetch the monthly payment breakdown for all loans of a specific user.
+
+    Args:
+    - user_id: The ID of the user.
+    - db: Database session.
+
+    Returns:
+    - A list of dictionaries with the monthly payment breakdown.
+    """
     db_user = crud.get_user(db, user_id=user_id)
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -58,6 +115,7 @@ def calculate_monthly_payments(user_id: int, db: Session = Depends(get_db)):
     loans = crud.get_loans_by_user(db, user_id=user_id)
     monthly_payments = {}
 
+    # Aggregate payments for each month across all loans
     for loan in loans:
         schedule = utils.calculate_amortization_schedule(
             loan.amount, loan.annual_interest_rate, loan.loan_term
@@ -89,6 +147,16 @@ def calculate_monthly_payments(user_id: int, db: Session = Depends(get_db)):
 
 @app.get("/users/{user_id}/total_payments")
 def calculate_total_payments(user_id: int, db: Session = Depends(get_db)):
+    """
+    Fetch the total payments breakdown for all loans of a specific user.
+
+    Args:
+    - user_id: The ID of the user.
+    - db: Database session.
+
+    Returns:
+    - A dictionary with the total payments breakdown.
+    """
     db_user = crud.get_user(db, user_id=user_id)
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -98,6 +166,7 @@ def calculate_total_payments(user_id: int, db: Session = Depends(get_db)):
     total_interest_paid = 0.0
     total_payments = 0.0
 
+    # Aggregate total payments across all loans
     for loan in loans:
         schedule = utils.calculate_amortization_schedule(
             loan.amount, loan.annual_interest_rate, loan.loan_term
@@ -115,6 +184,17 @@ def calculate_total_payments(user_id: int, db: Session = Depends(get_db)):
 
 @app.get("/loans/{loan_id}/summary/{month}")
 def get_loan_summary(loan_id: int, month: int, db: Session = Depends(get_db)):
+    """
+    Fetch a summary of a loan for a specific month.
+
+    Args:
+    - loan_id: The ID of the loan.
+    - month: The month for which to fetch the summary.
+    - db: Database session.
+
+    Returns:
+    - A summary of the loan for the specified month.
+    """
     db_loan = crud.get_loan(db, loan_id=loan_id)
     if db_loan is None:
         raise HTTPException(status_code=404, detail="Loan not found")
